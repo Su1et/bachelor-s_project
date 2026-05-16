@@ -41,3 +41,12 @@ class InventoryMovementResponse(InventoryMovementCreate, TimestampResponse):
     product: ProductResponse
     source_warehouse: WarehouseResponse | None = None
     destination_warehouse: WarehouseResponse | None = None
+    
+
+class InventoryMovementUpdate(BaseModel):
+    movement_type: MovementType | None = None
+    quantity: int | None = None
+    source_warehouse_id: int | None = None
+    destination_warehouse_id: int | None = None
+    status: MovementStatus | None = None
+    comment: str | None = None

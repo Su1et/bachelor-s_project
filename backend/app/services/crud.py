@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
-from app.models.models import Inventory, InventoryMovement, MovementType, Order, OrderItem, Product, User, Warehouse
+from app.models.models import Inventory, InventoryMovement, MovementType, MovementStatus, Order, OrderItem, Product, User, Warehouse
 
 
 class CRUDService:
@@ -149,9 +149,62 @@ def _estimated_minutes(distance_km: float | None) -> int | None:
     return int(round((distance_km / 45) * 60 + 25))
 
 
+def _adjust_inventory(db: Session, product_id: int, warehouse_id: int, quantity_change: int):
+    """Допоміжна функція для безпечної зміни кількості товару на конкретному складі"""
+    if not warehouse_id or quantity_change == 0:
+        return
+        
+    inv = db.query(Inventory).filter(
+        Inventory.product_id == product_id,
+        Inventory.warehouse_id == warehouse_id
+    ).first()
+    
+    # Якщо запису ще немає
+    if not inv:
+        if quantity_change < 0:
+            raise HTTPException(status_code=400, detail="Недостатній залишок на складі для списання")
+        inv = Inventory(product_id=product_id, warehouse_id=warehouse_id, quantity=0)
+        db.add(inv)
+        
+    # Перевірка на від'ємні залишки
+    if inv.quantity + quantity_change < 0:
+        raise HTTPException(status_code=400, detail="Недостатній залишок на складі для списання")
+        
+    inv.quantity += quantity_change
+    db.flush()
+
+
+def _apply_inventory_logic(db: Session, movement: InventoryMovement, old_status: MovementStatus | None, new_status: MovementStatus):
+    """Ядро бізнес-логіки: обробка переходів між статусами"""
+    if old_status == new_status:
+        return
+
+    is_out = movement.movement_type in (MovementType.out, MovementType.transfer)
+    is_in = movement.movement_type in (MovementType.in_, MovementType.return_, MovementType.transfer)
+
+    if old_status == MovementStatus.in_transit:
+        if is_out:
+            _adjust_inventory(db, movement.product_id, movement.source_warehouse_id, movement.quantity)
+    elif old_status == MovementStatus.completed:
+        if is_out:
+            _adjust_inventory(db, movement.product_id, movement.source_warehouse_id, movement.quantity)
+        if is_in:
+            _adjust_inventory(db, movement.product_id, movement.destination_warehouse_id, -movement.quantity)
+
+    if new_status == MovementStatus.in_transit:
+        if is_out:
+            _adjust_inventory(db, movement.product_id, movement.source_warehouse_id, -movement.quantity)
+    elif new_status == MovementStatus.completed:
+        if is_out:
+            _adjust_inventory(db, movement.product_id, movement.source_warehouse_id, -movement.quantity)
+        if is_in:
+            _adjust_inventory(db, movement.product_id, movement.destination_warehouse_id, movement.quantity)
+
+
 def create_movement(db: Session, payload):
     product = crud.get(db, Product, payload.product_id)
     _ = product
+    
     source = db.query(Warehouse).filter(Warehouse.id == payload.source_warehouse_id).first() if payload.source_warehouse_id else None
     destination = db.query(Warehouse).filter(Warehouse.id == payload.destination_warehouse_id).first() if payload.destination_warehouse_id else None
 
@@ -164,43 +217,29 @@ def create_movement(db: Session, payload):
 
     distance_km = _haversine_km(source, destination)
     estimated_minutes = _estimated_minutes(distance_km)
+    
     movement = InventoryMovement(**payload.model_dump(), distance_km=distance_km, estimated_minutes=estimated_minutes)
     db.add(movement)
+    db.flush()
 
-    if payload.movement_type in (MovementType.in_, MovementType.return_):
-        target = db.query(Inventory).filter(
-            Inventory.product_id == payload.product_id,
-            Inventory.warehouse_id == payload.destination_warehouse_id,
-        ).first()
-        if not target:
-            target = Inventory(product_id=payload.product_id, warehouse_id=payload.destination_warehouse_id, quantity=0)
-            db.add(target)
-        target.quantity += payload.quantity
-    elif payload.movement_type == MovementType.out:
-        inv = db.query(Inventory).filter(
-            Inventory.product_id == payload.product_id,
-            Inventory.warehouse_id == payload.source_warehouse_id,
-        ).first()
-        if not inv or inv.quantity < payload.quantity:
-            raise HTTPException(status_code=400, detail="Недостатній залишок на складі")
-        inv.quantity -= payload.quantity
-    elif payload.movement_type == MovementType.transfer:
-        inv = db.query(Inventory).filter(
-            Inventory.product_id == payload.product_id,
-            Inventory.warehouse_id == payload.source_warehouse_id,
-        ).first()
-        if not inv or inv.quantity < payload.quantity:
-            raise HTTPException(status_code=400, detail="Недостатній залишок для переміщення")
-        inv.quantity -= payload.quantity
-        target = db.query(Inventory).filter(
-            Inventory.product_id == payload.product_id,
-            Inventory.warehouse_id == payload.destination_warehouse_id,
-        ).first()
-        if not target:
-            target = Inventory(product_id=payload.product_id, warehouse_id=payload.destination_warehouse_id, quantity=0)
-            db.add(target)
-        target.quantity += payload.quantity
+    _apply_inventory_logic(db, movement, None, movement.status)
 
+    db.commit()
+    db.refresh(movement)
+    return movement
+
+
+def update_movement(db: Session, movement: InventoryMovement, payload):
+    old_status = movement.status
+    data = payload.model_dump(exclude_unset=True)
+    new_status = data.get("status", old_status)
+
+    for key, value in data.items():
+        setattr(movement, key, value)
+        
+    if old_status != new_status:
+        _apply_inventory_logic(db, movement, old_status, new_status)
+        
     db.commit()
     db.refresh(movement)
     return movement

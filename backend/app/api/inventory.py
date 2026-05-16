@@ -1,3 +1,4 @@
+from app.schemas.inventory import InventoryMovementUpdate
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -68,3 +69,15 @@ def add_movement(
     _: User = Depends(require_roles(UserRole.admin, UserRole.manager, UserRole.warehouse)),
 ):
     return create_movement(db, payload)
+
+
+@router.put("/movements/{movement_id}", response_model=InventoryMovementResponse)
+def edit_movement(
+    movement_id: int,
+    payload: InventoryMovementUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.admin, UserRole.manager, UserRole.warehouse)),
+):
+    from app.services.crud import update_movement
+    movement = crud.get(db, InventoryMovement, movement_id)
+    return update_movement(db, movement, payload)

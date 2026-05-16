@@ -1,30 +1,20 @@
 import { useEffect, useState } from 'react'
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts'
 import client from '../api/client'
 
-function MiniBarChart({ title, data }) {
-  const max = Math.max(...(data || []).map((x) => Number(x.value)), 1)
-  return (
-    <div className="card chart-card">
-      <h3>{title}</h3>
-      <div className="bar-list">
-        {(data || []).map((row) => (
-          <div className="bar-row" key={row.label}>
-            <span>{row.label}</span>
-            <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.max((Number(row.value) / max) * 100, 4)}%` }} /></div>
-            <strong>{row.value}</strong>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
 
 export default function DashboardPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    client.get('/dashboard/summary').then((res) => setData(res.data)).catch(() => setError('Не вдалося завантажити дашборд'))
+    client.get('/dashboard/summary')
+      .then((res) => setData(res.data))
+      .catch(() => setError('Не вдалося завантажити дашборд'))
   }, [])
 
   if (error) return <div className="page"><div className="error-box">{error}</div></div>
@@ -43,22 +33,119 @@ export default function DashboardPage() {
         <h2>Аналітична панель LogiCore OMS</h2>
         <p>Веб-орієнтована CRM/ERP-система для логістично-складської компанії: склади, товари, постачальники, запаси, переміщення, замовлення, карта складів і KPI.</p>
       </div>
+
       <div className="stats-grid">
-        {cards.map(([label, value]) => <div className="card stat-card" key={label}><div className="muted">{label}</div><div className="big-number">{value}</div></div>)}
+        {cards.map(([label, value]) => (
+          <div className="card stat-card" key={label}>
+            <div className="muted">{label}</div>
+            <div className="big-number">{value}</div>
+          </div>
+        ))}
       </div>
-      <div className="charts-grid">
-        <MiniBarChart title="Товари за категоріями" data={data.charts.products_by_category} />
-        <MiniBarChart title="Залишки за складами" data={data.charts.stock_by_warehouse} />
-        <MiniBarChart title="Замовлення за статусами" data={data.charts.orders_by_status} />
-        <MiniBarChart title="Операції руху запасів" data={data.charts.movements_by_type} />
+
+      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginTop: '20px' }}>
+        
+        {/* Графік 1 */}
+        <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ marginBottom: '0' }}>Товари за категоріями</h3>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie 
+                  data={data.charts.products_by_category} 
+                  dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={90} fill="#8884d8" 
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {data.charts.products_by_category.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Графік 2: Виправлено обрізання довгих назв складів */}
+        <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ marginBottom: '0' }}>Залишки за складами (од.)</h3>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.charts.stock_by_warehouse} margin={{ top: 20, right: 30, left: 0, bottom: 65 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="label" 
+                  angle={-35} 
+                  textAnchor="end" 
+                  height={60} 
+                  interval={0} 
+                  tick={{ fontSize: 12 }} 
+                />
+                <YAxis />
+                <Tooltip cursor={{fill: 'transparent'}} />
+                <Bar dataKey="value" fill="#82ca9d" name="Кількість запасів" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Графік 3: Виправлено накладання легенди на рамку */}
+        <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ marginBottom: '0' }}>Замовлення за статусами</h3>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 20 }}>
+                <Pie 
+                  data={data.charts.orders_by_status} 
+                  dataKey="value" nameKey="label" cx="50%" cy="45%" innerRadius={60} outerRadius={85} fill="#8884d8" label
+                >
+                  {data.charts.orders_by_status.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '10px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Графік 4: Виправлено обрізання тексту знизу */}
+        <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ marginBottom: '0' }}>Операції руху запасів</h3>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.charts.movements_by_type} layout="vertical" margin={{ top: 20, right: 30, left: 30, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="label" type="category" width={80} tick={{ fontSize: 12 }} />
+                <Tooltip cursor={{fill: 'transparent'}} />
+                <Bar dataKey="value" fill="#FF8042" name="Кількість операцій" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
       </div>
-      <div className="card">
+
+      <div className="card" style={{ marginTop: '20px' }}>
         <h3>Товари з критичним залишком</h3>
         <div className="table-wrap">
-          <table><thead><tr><th>Товар</th><th>Поточний залишок</th><th>Мінімальний рівень</th></tr></thead><tbody>
-            {data.low_stock_items.length === 0 && <tr><td colSpan="3">Критичних залишків немає</td></tr>}
-            {data.low_stock_items.map((item) => <tr key={item.name}><td>{item.name}</td><td>{item.quantity}</td><td>{item.min_stock_level}</td></tr>)}
-          </tbody></table>
+          <table>
+            <thead>
+              <tr><th>Товар</th><th>Поточний залишок</th><th>Мінімальний рівень</th></tr>
+            </thead>
+            <tbody>
+              {data.low_stock_items.length === 0 && <tr><td colSpan="3">Критичних залишків немає</td></tr>}
+              {data.low_stock_items.map((item) => (
+                <tr key={item.name} style={{ color: item.quantity === 0 ? 'red' : 'inherit' }}>
+                  <td>{item.name}</td>
+                  <td><strong>{item.quantity}</strong></td>
+                  <td>{item.min_stock_level}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

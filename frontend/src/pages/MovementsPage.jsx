@@ -25,11 +25,11 @@ export default function MovementsPage() {
         return { data: data.map((row) => ({ ...row, source_warehouse_id: row.source_warehouse_id ?? '', destination_warehouse_id: row.destination_warehouse_id ?? '', distance_km: row.distance_km ?? '', estimated_minutes: row.estimated_minutes ?? '', comment: row.comment ?? '' })) }
       }}
       createItem={(payload) => client.post('/inventory/movements', payload)}
-      updateItem={() => Promise.reject(new Error('Редагування руху не підтримується'))}
+      updateItem={(id, payload) => client.put(`/inventory/movements/${id}`, payload)}
       deleteItem={() => Promise.reject(new Error('Видалення руху не підтримується'))}
       emptyItem={{ product_id: 0, movement_type: 'transfer', quantity: 1, source_warehouse_id: '', destination_warehouse_id: '', status: 'completed', comment: '' }}
       createRoles={['admin', 'manager', 'warehouse']}
-      editRoles={[]}
+      editRoles={['admin', 'manager', 'warehouse']}
       deleteRoles={[]}
       renderExtra={() => <div className="card info-card"><strong>Унікальний функціонал:</strong> для переміщення між складами система автоматично розраховує відстань за координатами складів і орієнтовний час доставки.</div>}
     />
