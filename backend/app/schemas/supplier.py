@@ -13,6 +13,9 @@ class SupplierBase(BaseModel):
 
 
 class SupplierCreate(SupplierBase):
+    latitude: float | None = None
+    longitude: float | None = None
+    capacity: int | None = 1000
     pass
 
 

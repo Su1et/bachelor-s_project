@@ -79,6 +79,7 @@ class Warehouse(Base, TimestampMixin):
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="active")
     notes: Mapped[str] = mapped_column(Text, nullable=True)
+    type: Mapped[str] = mapped_column(String(40), default="internal", nullable=False)
 
     inventories: Mapped[list["Inventory"]] = relationship("Inventory", back_populates="warehouse")
     movements_from: Mapped[list["InventoryMovement"]] = relationship(

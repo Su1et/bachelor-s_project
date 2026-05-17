@@ -28,8 +28,18 @@ class OrderBase(BaseModel):
     notes: str | None = None
 
 
-class OrderCreate(OrderBase):
+class OrderCreate(BaseModel):
+    order_number: str
+    customer_name: str
+    status: OrderStatus
+    assigned_user_id: int | None = None
+    notes: str | None = None
     items: list[OrderItemCreate]
+    customer_location: str | None = None
+    customer_capacity: int | None = 0
+    customer_manager_name: str | None = None
+    customer_latitude: float | None = None
+    customer_longitude: float | None = None
 
 
 class OrderUpdate(BaseModel):

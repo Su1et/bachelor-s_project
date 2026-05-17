@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import client from '../api/client'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
@@ -10,12 +12,37 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 export default function DashboardPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
+  const dashboardRef = useRef(null)
 
   useEffect(() => {
     client.get('/dashboard/summary')
       .then((res) => setData(res.data))
       .catch(() => setError('Не вдалося завантажити дашборд'))
   }, [])
+
+  const exportToPDF = async () => {
+    setIsExporting(true)
+    try {
+      const element = dashboardRef.current
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#f8fafc'
+      })  
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`LogiCore_Report_${new Date().toLocaleDateString('uk-UA')}.pdf`)
+    } catch (err) {
+      console.error('Помилка генерації PDF:', err)
+      alert('Не вдалося згенерувати PDF-звіт.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (error) return <div className="page"><div className="error-box">{error}</div></div>
   if (!data) return <div className="page"><p>Завантаження дашборду...</p></div>
@@ -28,10 +55,29 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="page">
-      <div className="hero-card">
-        <h2>Аналітична панель LogiCore OMS</h2>
-        <p>Веб-орієнтована CRM/ERP-система для логістично-складської компанії: склади, товари, постачальники, запаси, переміщення, замовлення, карта складів і KPI.</p>
+    <div className="page" ref={dashboardRef} style={{ padding: '20px', backgroundColor: '#f8fafc' }}>
+      <div className="hero-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <div>
+          <h2>Аналітична панель LogiCore OMS</h2>
+          <p style={{ margin: 0 }}>Веб-орієнтована CRM/ERP-система для логістично-складської компанії: склади, товари, постачальники, запаси, переміщення, замовлення, карта складів і KPI.</p>
+        </div>
+        <button 
+          onClick={exportToPDF} 
+          disabled={isExporting}
+          style={{
+            backgroundColor: isExporting ? '#94a3b8' : '#ffffff',
+            color: isExporting ? '#ffffff' : '#1e40af',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            cursor: isExporting ? 'not-allowed' : 'pointer',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s'
+          }}
+        >
+          {isExporting ? '⏳ Формування PDF...' : '📄 Завантажити звіт (PDF)'}
+        </button>
       </div>
 
       <div className="stats-grid">
@@ -45,7 +91,6 @@ export default function DashboardPage() {
 
       <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginTop: '20px' }}>
         
-        {/* Графік 1 */}
         <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ marginBottom: '0' }}>Товари за категоріями</h3>
           <div style={{ flex: 1, minHeight: 0 }}>
@@ -66,21 +111,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Графік 2: Виправлено обрізання довгих назв складів */}
         <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ marginBottom: '0' }}>Залишки за складами (од.)</h3>
           <div style={{ flex: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.charts.stock_by_warehouse} margin={{ top: 20, right: 30, left: 0, bottom: 65 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="label" 
-                  angle={-35} 
-                  textAnchor="end" 
-                  height={60} 
-                  interval={0} 
-                  tick={{ fontSize: 12 }} 
-                />
+                <XAxis dataKey="label" angle={-35} textAnchor="end" height={60} interval={0} tick={{ fontSize: 12 }} />
                 <YAxis />
                 <Tooltip cursor={{fill: 'transparent'}} />
                 <Bar dataKey="value" fill="#82ca9d" name="Кількість запасів" radius={[4, 4, 0, 0]} />
@@ -89,7 +126,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Графік 3: Виправлено накладання легенди на рамку */}
         <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ marginBottom: '0' }}>Замовлення за статусами</h3>
           <div style={{ flex: 1, minHeight: 0 }}>
@@ -110,7 +146,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Графік 4: Виправлено обрізання тексту знизу */}
         <div className="card chart-card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ marginBottom: '0' }}>Операції руху запасів</h3>
           <div style={{ flex: 1, minHeight: 0 }}>

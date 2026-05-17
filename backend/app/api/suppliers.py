@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.models import Supplier, User, UserRole
 from app.schemas.supplier import SupplierCreate, SupplierResponse, SupplierUpdate
-from app.services.crud import create_simple, crud, update_simple
+from app.services.crud import create_supplier, crud, update_simple, update_supplier
 from app.services.dependencies import require_roles
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
@@ -24,7 +24,7 @@ def add_supplier(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
 ):
-    return create_simple(db, Supplier, payload)
+    return create_supplier(db, payload)
 
 
 @router.put("/{supplier_id}", response_model=SupplierResponse)
@@ -35,7 +35,7 @@ def edit_supplier(
     _: User = Depends(require_roles(UserRole.admin, UserRole.manager)),
 ):
     supplier = crud.get(db, Supplier, supplier_id)
-    return update_simple(db, supplier, payload)
+    return update_supplier(db, supplier, payload)
 
 
 @router.delete("/{supplier_id}")

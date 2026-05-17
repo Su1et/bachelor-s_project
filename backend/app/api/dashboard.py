@@ -30,6 +30,7 @@ def dashboard_summary(
     stock_by_warehouse = (
         db.query(Warehouse.name, func.coalesce(func.sum(Inventory.quantity), 0))
         .outerjoin(Inventory, Warehouse.id == Inventory.warehouse_id)
+        .filter(Warehouse.status == "active")
         .group_by(Warehouse.id)
         .all()
     )

@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash
-from app.models.models import Inventory, InventoryMovement, MovementType, MovementStatus, Order, OrderItem, Product, User, Warehouse
+from app.models.models import Inventory, InventoryMovement, MovementType, MovementStatus, Order, OrderItem, Product, User, Supplier, Warehouse
 
 
 class CRUDService:
@@ -89,6 +89,21 @@ def create_order(db: Session, payload):
         total += item.quantity * item.unit_price
         db.add(order_item)
     order.total_amount = total
+    warehouse_name = f"Склад {payload.customer_name}"
+    existing_warehouse = db.query(Warehouse).filter(Warehouse.name == warehouse_name).first()
+    if not existing_warehouse and payload.customer_location:
+        new_warehouse = Warehouse(
+            name=warehouse_name,
+            location=payload.customer_location,
+            manager_name=payload.customer_manager_name or "Не призначено",
+            capacity=payload.customer_capacity or 1000,
+            latitude=payload.customer_latitude,
+            longitude=payload.customer_longitude,
+            status="active",
+            type="client",
+            notes=f"Автоматично згенеровано системою на основі замовлення № {payload.order_number}"
+        )
+        db.add(new_warehouse)
     db.commit()
     db.refresh(order)
     return order
@@ -243,3 +258,62 @@ def update_movement(db: Session, movement: InventoryMovement, payload):
     db.commit()
     db.refresh(movement)
     return movement
+
+def create_supplier(db: Session, payload):
+    data = payload.model_dump()
+    latitude = data.pop("latitude", None)
+    longitude = data.pop("longitude", None)
+    capacity = data.pop("capacity", 1000)
+    
+    supplier = Supplier(**data)
+    db.add(supplier)
+    db.flush()
+    
+    warehouse_name = f"Склад {supplier.name}"
+    existing_warehouse = db.query(Warehouse).filter(Warehouse.name == warehouse_name).first()
+    
+    if not existing_warehouse and supplier.address:
+        new_warehouse = Warehouse(
+            name=warehouse_name,
+            location=supplier.address,
+            manager_name=supplier.contact_person or "Не призначено",
+            capacity=capacity or 1000,
+            latitude=latitude,
+            longitude=longitude,
+            status="active",
+            type="supplier",
+            notes=f"Автоматично згенеровано при додаванні постачальника {supplier.name}"
+        )
+        db.add(new_warehouse)
+
+    db.commit()
+    db.refresh(supplier)
+    return supplier
+
+def update_supplier(db: Session, supplier: Supplier, payload):
+    data = payload.model_dump(exclude_unset=True)
+    
+    data.pop("address", None)
+    data.pop("capacity", None)
+    data.pop("latitude", None)
+    data.pop("longitude", None)
+    
+    old_contact = supplier.contact_person
+    new_contact = data.get("contact_person", old_contact)
+    
+    for key, value in data.items():
+        setattr(supplier, key, value)
+        
+    if old_contact != new_contact:
+        warehouse_name = f"Склад {supplier.name}"
+        warehouse = db.query(Warehouse).filter(
+            Warehouse.name == warehouse_name,
+            Warehouse.type == "supplier"
+        ).first()
+        
+        if warehouse:
+            warehouse.manager_name = new_contact or "Не призначено"
+            
+    db.commit()
+    db.refresh(supplier)
+    return supplier

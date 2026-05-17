@@ -82,6 +82,11 @@ export default function WarehousesPage() {
       fields={[
         { name: 'name', label: 'Назва' },
         { name: 'location', label: 'Адреса (наприклад: Київ, Хрещатик 1)' },
+        { name: 'type', label: 'Тип складу', type: 'select', options: [
+          { value: 'internal', label: 'Власний склад' },
+          { value: 'client', label: 'Клієнт' },
+          { value: 'supplier', label: 'Постачальник' }
+        ] },
         { name: 'manager_name', label: 'Відповідальний' },
         { name: 'capacity', label: 'Місткість', type: 'number' },
         { name: 'latitude', label: 'Широта (визначається автоматично)', type: 'number', nullable: true },
@@ -92,7 +97,7 @@ export default function WarehousesPage() {
       createItem={handleCreate}
       updateItem={handleUpdate}
       deleteItem={(id) => client.delete(`/warehouses/${id}`)}
-      emptyItem={{ name: '', location: '', manager_name: '', capacity: 0, latitude: '', longitude: '', status: 'active' }}
+      emptyItem={{ name: '', location: '', type: 'internal', manager_name: '', capacity: 0, latitude: '', longitude: '', status: 'active' }}
       createRoles={['admin', 'manager']}
       editRoles={['admin', 'manager']}
       deleteRoles={['admin']}

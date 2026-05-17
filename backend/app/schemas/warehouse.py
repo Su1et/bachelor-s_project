@@ -12,6 +12,7 @@ class WarehouseBase(BaseModel):
     longitude: float | None = None
     status: str = "active"
     notes: str | None = None
+    type: str = "internal"
 
 
 class WarehouseCreate(WarehouseBase):
@@ -27,6 +28,7 @@ class WarehouseUpdate(BaseModel):
     longitude: float | None = None
     status: str | None = None
     notes: str | None = None
+    type: str = "internal"
 
 
 class WarehouseResponse(WarehouseBase, TimestampResponse):
