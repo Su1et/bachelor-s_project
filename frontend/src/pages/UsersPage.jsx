@@ -6,11 +6,26 @@ export default function UsersPage() {
     <CrudPage
       title="Управління користувачами та ролями"
       fields={[
-        { name: 'full_name', label: 'ПІБ' }, { name: 'email', label: 'Email' },
-        { name: 'role', label: 'Роль', type: 'select', options: [
-          { value: 'admin', label: 'Адміністратор' }, { value: 'manager', label: 'Менеджер' }, { value: 'warehouse', label: 'Працівник складу' }, { value: 'analyst', label: 'Керівник / аналітик' }, { value: 'operator', label: 'Оператор' },
-        ] },
-        { name: 'password', label: 'Пароль' },
+        { name: 'full_name', label: 'ПІБ' }, 
+        { name: 'email', label: 'Email' },
+        { 
+          name: 'role', 
+          label: 'Роль', 
+          type: 'select', 
+          options: [
+            { value: 'admin', label: 'Адміністратор' }, 
+            { value: 'manager', label: 'Менеджер' }, 
+            { value: 'warehouse', label: 'Працівник складу' }, 
+            { value: 'analyst', label: 'Керівник / аналітик' }, 
+            { value: 'operator', label: 'Оператор' },
+          ] 
+        },
+        { 
+          name: 'password', 
+          label: 'Пароль', 
+          type: 'password',
+          table: false      
+        },
       ]}
       fetchAll={() => client.get('/users')}
       createItem={(payload) => client.post('/users', { ...payload, is_active: true })}

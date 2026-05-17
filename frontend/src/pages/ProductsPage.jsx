@@ -174,7 +174,6 @@ export default function ProductsPage() {
                 <th>Одиниця</th>
                 <th>Ціна</th>
                 <th>Мін. залишок</th>
-                {/* ОНОВЛЕНО: Назва колонки */}
                 <th>Постачальник</th>
                 <th>Опис</th>
                 {(canEdit || canDelete) && <th>Дії</th>}

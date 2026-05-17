@@ -92,15 +92,28 @@ export default function CrudPage({ title, fields, fetchAll, createItem, updateIt
         )}
         <div className="card table-wrap">
           <table>
-            <thead><tr>{fields.map((field) => <th key={field.name}>{field.label}</th>)}{(canEdit || canDelete) && <th>Дії</th>}</tr></thead>
+            <thead>
+              <tr>
+                {fields.filter((field) => field.table !== false).map((field) => (
+                  <th key={field.name}>{field.label}</th>
+                ))}
+                {(canEdit || canDelete) && <th>Дії</th>}
+              </tr>
+            </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
-                  {fields.map((field) => <td key={field.name}>{field.render ? field.render(item) : String(item[field.name] ?? '')}</td>)}
-                  {(canEdit || canDelete) && <td className="nowrap">
-                    {canEdit && <button className="secondary small" onClick={() => onEdit(item)}>Редагувати</button>}
-                    {canDelete && <button className="danger small" onClick={() => onDelete(item.id)}>Видалити</button>}
-                  </td>}
+                  {fields.filter((field) => field.table !== false).map((field) => (
+                    <td key={field.name}>
+                      {field.render ? field.render(item) : String(item[field.name] ?? '')}
+                    </td>
+                  ))}
+                  {(canEdit || canDelete) && (
+                    <td className="nowrap">
+                      {canEdit && <button className="secondary small" onClick={() => onEdit(item)}>Редагувати</button>}
+                      {canDelete && <button className="danger small" onClick={() => onDelete(item.id)}>Видалити</button>}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

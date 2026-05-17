@@ -52,7 +52,6 @@ function WarehousesMap({ items }) {
 export default function WarehousesPage() {
   
   const handleCreate = async (payload) => {
-    // Якщо координати не вказані, але є адреса
     if (payload.location && (!payload.latitude || !payload.longitude)) {
       const coords = await geocodeAddress(payload.location);
       if (coords) {
@@ -91,7 +90,8 @@ export default function WarehousesPage() {
         { name: 'capacity', label: 'Місткість', type: 'number' },
         { name: 'latitude', label: 'Широта (визначається автоматично)', type: 'number', nullable: true },
         { name: 'longitude', label: 'Довгота (визначається автоматично)', type: 'number', nullable: true },
-        { name: 'status', label: 'Статус', type: 'select', options: [{ value: 'active', label: 'active' }, { value: 'reserve', label: 'reserve' }, { value: 'inactive', label: 'inactive' }] },
+        { name: 'status', label: 'Статус', type: 'select', options: [{ value: 'active', label: 'active' }, { value: 'reserve', label: 'reserve' }, { value: 'inactive', label: 'inactive' }], 
+          render: (item) => <span className={`badge ${item.status}`}>{item.status}</span>},
       ]}
       fetchAll={() => client.get('/warehouses')}
       createItem={handleCreate}

@@ -247,7 +247,6 @@ export default function OrdersPage() {
         
         <div className="card table-wrap">
           <table>
-            {/* ОНОВЛЕНО: Додано заголовок стовпчика "Менеджер" */}
             <thead>
               <tr>
                 <th>№</th>
@@ -264,14 +263,11 @@ export default function OrdersPage() {
                 <tr key={order.id}>
                   <td><strong>{order.order_number}</strong></td>
                   <td>{order.customer_name}</td>
-                  
-                  {/* ОНОВЛЕНО: Виводимо ПІБ менеджера безпосередньо в рядок таблиці */}
                   <td>
                     {order.assigned_user?.full_name || (
                       <span className="muted" style={{ fontStyle: 'italic' }}>Не призначено</span>
                     )}
                   </td>
-                  
                   <td><span className={`badge ${order.status}`}>{order.status}</span></td>
                   <td>{order.total_amount} грн</td>
                   <td>
