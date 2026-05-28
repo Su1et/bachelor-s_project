@@ -21,28 +21,37 @@ export default function DashboardPage() {
       .catch(() => setError('Не вдалося завантажити дашборд'))
   }, [])
 
-  const exportToPDF = async () => {
-    setIsExporting(true)
-    try {
-      const element = dashboardRef.current
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#f8fafc'
-      })  
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-      pdf.save(`LogiCore_Report_${new Date().toLocaleDateString('uk-UA')}.pdf`)
-    } catch (err) {
-      console.error('Помилка генерації PDF:', err)
-      alert('Не вдалося згенерувати PDF-звіт.')
-    } finally {
-      setIsExporting(false)
-    }
+const exportToPDF = async () => {
+  setIsExporting(true)
+  try {
+    const element = dashboardRef.current
+    const canvas = await html2canvas(element, { 
+      scale: 2, 
+      useCORS: true,
+      backgroundColor: '#f8fafc',
+      onclone: (clonedDoc) => {
+        const downloadBtn = clonedDoc.querySelector('button');
+        if (downloadBtn) {
+          downloadBtn.style.display = 'none';
+        }
+      }
+    })  
+    const imgData = canvas.toDataURL('image/png')
+    const pdfWidth = 210
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+    const orientation = pdfWidth > pdfHeight ? 'l' : 'p'
+    const pdf = new jsPDF(orientation, 'mm', [pdfWidth, pdfHeight])
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+    pdf.save(`LogiCore_Report_${new Date().toLocaleDateString('uk-UA')}.pdf`)
+  } catch (err) {
+    console.error('Помилка генерації PDF:', err)
+    alert('Не вдалося згенерувати PDF-звіт.')
+  } finally {
+    setIsExporting(false)
   }
+}
+
 
   if (error) return <div className="page"><div className="error-box">{error}</div></div>
   if (!data) return <div className="page"><p>Завантаження дашборду...</p></div>
@@ -59,9 +68,10 @@ export default function DashboardPage() {
       <div className="hero-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h2>Аналітична панель LogiCore OMS</h2>
-          <p style={{ margin: 0 }}>Веб-орієнтована CRM/ERP-система для логістично-складської компанії: склади, товари, постачальники, запаси, переміщення, замовлення, карта складів і KPI.</p>
+          <p style={{ margin: 0 }}>Веборієнтована CRM/ERP-система для логістично-складської компанії: склади, товари, постачальники, запаси, переміщення, замовлення, карта складів і KPI.</p>
         </div>
         <button 
+          data-html2canvas-ignore="true"
           onClick={exportToPDF} 
           disabled={isExporting}
           style={{
