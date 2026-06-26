@@ -23,7 +23,7 @@ export default function LoginPage() {
     <div className="login-page">
       <form className="card login-card" onSubmit={handleSubmit}>
         <h1>Operations Management System</h1>
-        <p className="muted">Вхід до веб-орієнтованої системи управління операційними процесами</p>
+        <p className="muted">Вхід до веборієнтованої системи управління операційними процесами</p>
         {error && <div className="error-box">{error}</div>}
         <label>
           <span>Email</span>
